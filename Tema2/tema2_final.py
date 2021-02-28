@@ -84,15 +84,11 @@ def is_pos_def(matrix):
     return np.all(np.linalg.eigvals(matrix) > 0)
 
 
-# Factorizare Cholesky
 def get_cholesky_decomposition(matrix, epsilon):
     n = len(matrix)
     d = [matrix[i][i] for i in range(n)]
     try:
         for p in range(n):
-            # elementele de deasupra diagonalei principale vor fi 0
-            for i in range(p):
-                matrix[i][p] = 0
             # l_pp
             matrix[p][p] = sqrt(d[p] - sum([matrix[p][j] ** 2 for j in range(p)]))
 
@@ -102,6 +98,7 @@ def get_cholesky_decomposition(matrix, epsilon):
                     matrix[i][p] - sum([matrix[i][j] * matrix[p][j] for j in range(p)]),
                     matrix[p][p],
                     epsilon)
+        return d
     except:
         print("Matricea nu e definita pozitiv.")
 
@@ -115,7 +112,11 @@ def division(a, b, epsilon):
 
 
 def compute_determinant_using_L(cholesky_l):
-    return np.linalg.det(cholesky_l) * np.linalg.det(cholesky_l.T)
+    det = 1
+    for i in range(len(cholesky_l)):
+        det *= cholesky_l[i][i]
+
+    return det ** 2
 
 
 # metoda substitutiei directe
@@ -132,21 +133,39 @@ def direct_substitution_method(cholesky_l, b, epsilon):
     return solution
 
 
-def inverse_substitution_method(transposed_cholesky_l, b, epsilon):
-    solution = np.zeros(len(transposed_cholesky_l))
-
-    for i in reversed(range(len(transposed_cholesky_l))):
+def inverse_substitution_method(cholesky_l, b, epsilon):
+    solution = np.zeros(len(cholesky_l))
+    for i in reversed(range(len(cholesky_l))):
         solution[i] = division(
-            b[i] - sum([transposed_cholesky_l[i][j] * solution[j] for j in range(i + 1, len(transposed_cholesky_l))]),
-            transposed_cholesky_l[i][i],
+            b[i] - sum([cholesky_l[j][i] * solution[j] for j in range(i + 1, len(cholesky_l))]),
+            cholesky_l[i][i],
             epsilon
         )
-
     return solution
 
 
 def as_column_vector(arr):
     return arr.reshape(-1, 1)
+
+
+def multiply(cholesky_l, x, diag):
+    result = np.zeros((len(cholesky_l), len(x[0])))
+
+    for i in range(len(cholesky_l)):
+        for j in range(len(x[0])):
+            for k in range(len(x)):
+                if i > k:
+                    result[i][j] += cholesky_l[k][i] * x[k][j]
+                elif i == k:
+                    result[i][j] += diag[i] * x[k][j]
+                else:
+                    result[i][j] += cholesky_l[i][k] * x[k][j]
+
+    return result
+
+
+def euclidean_norm(matrix):
+    return sqrt(sum([matrix[i][j] for i in range(len(matrix)) for j in range(len(matrix[0]))]))
 
 
 def lu_experiment(matrix, b):
@@ -163,31 +182,78 @@ def cholesky_inverse(cholesky_l, epsilon):
     for j in range(len(cholesky_l)):
         e = [1 if i == j else 0 for i in range(len(cholesky_l))]
         y = direct_substitution_method(cholesky_l, e, epsilon)
-        x = inverse_substitution_method(cholesky_l.T, y, epsilon)
+        x = inverse_substitution_method(cholesky_l, y, epsilon)
         columns.append(x)
 
     return np.column_stack(tuple(columns))
+
+
+# bonus
+
+def map_sym_matrix_to_array(matrix):
+    return [matrix[i][j] for i in range(len(matrix)) for j in range(i + 1)]
+
+
+def get_matrix_size(length):
+    n = 1
+    while n * (n + 1) / 2 != length:
+        n += 1
+
+    return n
+
+
+def get_arr_index(i, j):
+    index = 0
+    if i < j:
+        aux = i
+        i = j
+        j = aux
+
+    for i in range(i):
+        index += i + 1
+
+    return index + j
+
+
+def get_cholesky_decomposition_arr(arr, epsilon):
+    n = get_matrix_size(len(arr))
+    l = np.zeros(len(arr))
+
+    for p in range(n):
+        # l_pp
+        l[get_arr_index(p, p)] = sqrt(arr[get_arr_index(p, p)] - sum([arr[get_arr_index(p, j)] ** 2 for j in range(p)]))
+
+        for i in range(p + 1, n):
+            l[get_arr_index(i, p)] = division(
+                arr[get_arr_index(i, p)] - sum([arr[get_arr_index(i, j)] * arr[get_arr_index(p, j)] for j in range(p)]),
+                arr[get_arr_index(p, p)],
+                epsilon
+            )
+    return l
 
 
 if __name__ == '__main__':
     e, m = get_matrix_from_user()
     m_initial = deepcopy(m)
     print("Matricea initiala:\n", m_initial)
-    get_cholesky_decomposition(m, e)
-    print("L:\n", m)
+    diag = get_cholesky_decomposition(m, e)
+    print("Dupa descompunerea cholesky:\n", m, diag)
     print("Determinantul calculat cu L: ", compute_determinant_using_L(m))
     print("Determinantul adevarat: ", np.linalg.det(m_initial))
-    print("Urmeaza sa introduceti b, pentru a evidentia cum putem "
-          "folosi descompunerea choleski pentru a rezolva sisteme liniare de tip Ax = b")
     b = get_array_from_user(len(m))
-
     y = direct_substitution_method(m, b, e)
-    print("Y:\n",y)
-    x = inverse_substitution_method(m.T, y, e)
-    print("X:\n", x)
-    print("THE CHOLESKY X IS:\n", x)
-    print("NORM IS: ", np.linalg.norm(np.dot(m_initial, x) - b))
+    x_chol = inverse_substitution_method(m, y, e)
+
+    norm = euclidean_norm(multiply(m, as_column_vector(x_chol), diag) - as_column_vector(b))
+    print("|A_init * x_chol - b|_2 = ", norm)
     lu_experiment(m_initial, b)
+
     inverse = cholesky_inverse(m, e)
     print("THE CHOLESKY INVERSE IS:\n", inverse)
     print("NORM OF A^-1 difference:\n", np.linalg.norm(inverse - np.linalg.inv(m_initial)))
+
+    print("BONUS PART")
+    m_arr = map_sym_matrix_to_array(m_initial)
+    print("A_init mapped as array: ", map_sym_matrix_to_array(m_initial))
+    l = get_cholesky_decomposition_arr(m_arr, e)
+    print(l)
