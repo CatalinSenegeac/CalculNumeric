@@ -203,33 +203,54 @@ def get_matrix_size(length):
 
 
 def get_arr_index(i, j):
-    index = 0
-    if i < j:
-        aux = i
-        i = j
-        j = aux
+    i0 = i
+    j0 = j
+    if i0 < j0:
+        aux = i0
+        i0 = j0
+        j0 = aux
 
-    for i in range(i):
-        index += i + 1
-
-    return index + j
+    return int(i0 * (i0 + 1) / 2) + j0
 
 
-def get_cholesky_decomposition_arr(arr, epsilon):
-    n = get_matrix_size(len(arr))
-    l = np.zeros(len(arr))
+def get_cholesky_decomposition_arr(arr, n, epsilon):
+    l = np.zeros(int(n * (n + 1) / 2))
 
     for p in range(n):
-        # l_pp
-        l[get_arr_index(p, p)] = sqrt(arr[get_arr_index(p, p)] - sum([arr[get_arr_index(p, j)] ** 2 for j in range(p)]))
+        l[get_arr_index(p, p)] = sqrt(arr[get_arr_index(p, p)] - sum([l[get_arr_index(p, j)] ** 2 for j in range(p)]))
 
         for i in range(p + 1, n):
             l[get_arr_index(i, p)] = division(
-                arr[get_arr_index(i, p)] - sum([arr[get_arr_index(i, j)] * arr[get_arr_index(p, j)] for j in range(p)]),
-                arr[get_arr_index(p, p)],
+                arr[get_arr_index(i, p)] - sum([l[get_arr_index(i, j)] * l[get_arr_index(p, j)] for j in range(p)]),
+                l[get_arr_index(p, p)],
                 epsilon
             )
+
     return l
+
+
+def direct_substitution_method_arr(arr, b, n, epsilon):
+    solution = []
+
+    for i in range(n):
+        solution.append(division(
+            b[i] - sum([arr[get_arr_index(i, j)] * solution[j] for j in range(i)]),
+            arr[get_arr_index(i, i)],
+            epsilon)
+        )
+    return solution
+
+
+def inverse_substitution_method_arr(arr, b, n, epsilon):
+    solution = np.zeros(n)
+
+    for i in reversed((range(n))):
+        solution[i] = division(
+            b[i] - sum([l[get_arr_index(j, i)] * solution[j] for j in range(i + 1, n)]),
+            l[get_arr_index(i, i)],
+            epsilon
+        )
+    return solution
 
 
 if __name__ == '__main__':
@@ -242,8 +263,9 @@ if __name__ == '__main__':
     print("Determinantul adevarat: ", np.linalg.det(m_initial))
     b = get_array_from_user(len(m))
     y = direct_substitution_method(m, b, e)
+    print("Y is:\n", y)
     x_chol = inverse_substitution_method(m, y, e)
-
+    print("X_chol is:\n", x_chol)
     norm = euclidean_norm(multiply(m, as_column_vector(x_chol), diag) - as_column_vector(b))
     print("|A_init * x_chol - b|_2 = ", norm)
     lu_experiment(m_initial, b)
@@ -255,5 +277,11 @@ if __name__ == '__main__':
     print("BONUS PART")
     m_arr = map_sym_matrix_to_array(m_initial)
     print("A_init mapped as array: ", map_sym_matrix_to_array(m_initial))
-    l = get_cholesky_decomposition_arr(m_arr, e)
-    print(l)
+    n = len(m_initial)
+    l = get_cholesky_decomposition_arr(m_arr, n, e)
+    print("L array is: ", l)
+    y = direct_substitution_method_arr(l, b, n, e)
+    print("Y is:\n", y)
+    x_chol = inverse_substitution_method_arr(l, y, n, e)
+    print("X_chol is:\n", x_chol)
+
