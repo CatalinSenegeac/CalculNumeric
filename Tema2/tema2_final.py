@@ -206,9 +206,7 @@ def get_arr_index(i, j):
     i0 = i
     j0 = j
     if i0 < j0:
-        aux = i0
-        i0 = j0
-        j0 = aux
+        i0, j0 = j0, i0
 
     return int(i0 * (i0 + 1) / 2) + j0
 
