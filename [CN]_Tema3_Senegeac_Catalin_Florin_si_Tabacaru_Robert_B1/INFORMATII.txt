@@ -1,0 +1,1 @@
+In fisierul b.txt nu sunt inversati vectorii b si c conform corecturii aduse ulterior in urma sesizarii greselii. In cod sunt apelate metode cu vectorii in ordine inversa pentru a functiona corect.
