@@ -56,9 +56,9 @@ def compute_xc_using_xp(xp, n, p, q, a, b, c, f):
         b_sum = 0
         c_sum = 0
         if i >= q:
-            b_sum = b[i-1] * xp[i - q]
+            c_sum = c[i-1] * xp[i - q]
         if i < n - p:
-            c_sum = c[i-1] * xp[i + p]
+            b_sum = b[i-1] * xp[i + p]
         xc[i] = (f[i] - b_sum - c_sum) / a[i]
 
     return xc
@@ -71,7 +71,7 @@ def approximate_using_gs(n, p, q, precision, a, b, c, f, k_max=10000):
     k = 1
     while precision <= delta_x <= 10 ** 8 and k < k_max:
         x_prev = x_current
-        x_current = x_current = compute_xc_using_xp(x_prev, n, p, q, a, b, c, f)
+        x_current = compute_xc_using_xp(x_prev, n, p, q, a, b, c, f)
         delta_x = np.linalg.norm(x_current - x_prev)
         k += 1
     if delta_x < precision:
@@ -81,8 +81,9 @@ def approximate_using_gs(n, p, q, precision, a, b, c, f, k_max=10000):
 
 
 if __name__ == '__main__':
-    for i in range(1,6):
+    for i in range(1, 6):
         n, p, q, precision, a, b, c, f = readAandF('./inputs', i)
+        print("CASE %d:" % i)
         try:
             x_gs = approximate_using_gs(n, p, q, precision, a, b, c, f)
         except:
